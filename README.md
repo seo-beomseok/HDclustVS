@@ -2,7 +2,7 @@
 R package for "Block-wise Variable Selection for Clustering via Latent States of Mixture Models"
 
 - [Package document](https://github.com/seo-beomseok/HDclustVS/blob/main/HDclustVS_1.0.pdf)
-- [Vignette](https://github.com/seo-beomseok/HDclustVS/vignette/vignette.html)
+- [Vignette](https://github.com/seo-beomseok/HDclustVS/blob/main/vignette/vignette.html)
 
 <p>Users can install HDclustVS with
 just two lines of code in R console:</p>
