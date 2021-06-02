@@ -1,0 +1,140 @@
+---
+title: "Quick tour of HDclustVS"
+author: "Beomseok Seo"
+date: "`r Sys.Date()`"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Vignette Title}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r echo=F, results="asis"}
+cat("
+<style>
+samp {
+   color: red;
+   background-color: #EEEEEE;
+}
+</style>
+")
+```
+
+```{r setup, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>"
+)
+```
+
+## 1. Introduction
+
+<samp>HDclustVS</samp> is an R package for new block-wise variable selection methods for clustering, <samp>HMM-VB-VS</samp> and <samp>GMM-VB-VS</samp>, which exploit the latent states of the hidden Markov model on variable blocks or Gaussian mixture model. The variable blocks are formed by early-stop-and-sorted-depth-first-search (ESS-DFS) on a dendrogram created based on the mutual information between any pair of variables. Then, the variable selection is conducted by an independence test between the latent states and semi-clusters which are the smaller clusters that will be further grouped into final clusters. This package will be merged with <samp>HDclust</samp> in CRAN in the near future.
+
+## 2. Variable block construction by ESS-DFS
+
+Here, we illustrate the usage of HDclustVS for variable selection for high dimensional clustering based on a simulated toy example which has 300 samples, 100 relevant variables, 100 irrelevant variables and 5 clusters. genData2( ) generates the data set.
+
+```{r, echo=T, eval=T, fig.show='hold', out.width="30%", cache=T}
+library(HDclustVS)
+library(mclust)
+# Data generation
+set.seed(1)
+dat = genData2(n=300,p1=100,p2=100,C=5,rep=1) 
+X = dat[[1]]$X_total
+Y = dat[[1]]$z
+  
+n = dim(X)[1]
+p = dim(X)[2]
+
+# EDA
+Xr = prcomp(dat[[1]]$X_relev)$x[,1:2]
+Xi = prcomp(dat[[1]]$X_irrel)$x[,1:2]
+Xt = prcomp(dat[[1]]$X_total)$x[,1:2]
+plotCls(Xr,Y,title="Relevant var.",no.legend=T)
+plotCls(Xi,Y,title="Irrelevant var.",no.legend=T)
+plotCls(Xt,Y,title="Total var.",no.legend=T)
+```
+
+First, variable blocks are constructed by ESS-DFS algorithm with maximum block size $m=10$ based on mutual information between any pair of variables. As the result, the algorithm generates $30$ variable blocks.
+
+```{r,  echo=T, eval=T, results="hide", cache=T, warning=F}
+# The number of clusters.
+C = 5
+# Maximum block size is set 5% of the total dimension.
+max.vb.size = 10
+
+# Calculate Mutual Information.
+pwmi = pairwiseMI(X)
+# Variable block construction by ESS-DFS.
+vbs = constVB(X,pwmi,max.vb.size)
+```
+
+## 3. Fitting HMM-VB or GMM-VB
+
+HMM-VB with $C=5$ components for each block is fitted. The number of components for HMM-VB is set as the true number of clusters, which we assume known.
+
+```{r,  echo=T, eval=T, results="hide", cache=T}
+# Fitting HMM-VB with 5 components.
+fit = fitHmmvb(X,C,vbs)
+# If we want to use GMM-VB we can use fit = fitGmmvb(X,C,vbs) instead.
+```
+
+## 4. Variable block selection by an independence test between semi-clusters and latent states of variable blocks.
+
+Semi-clusters are computed by dendrogram clustering of the estimated MAP state sequences based on \textit{Davies-Bouldin} type of distance measure. Then, to select variable blocks, a bimodality test is applied on the normalized mutual information (NMI) between the latent states of each variable block and semi-cluster labels. 
+
+```{r,  echo=T, eval=T, results="hide", cache=T}
+# Semi-clusters
+semi.cls = semicls(X,fit)
+# Variable block selection by a bimodality test.
+chosen.vb = semi.cls$chosen.vb
+
+# Reduce the model structure
+red.dat = reduceVB(X,fit,chosen.vb)
+red.X = red.dat$X
+red.vbs = red.dat$vbs
+```
+
+## 5. Retraining of HMM-VB with the dimension-reduced data and finding final clusters.
+
+Now, HMM-VB with reduced variable blocks is applied and the final clusters are computed by dendrogram clustering of the re-estimated MAP state sequences with the desired number of clusters.
+```{r,  echo=T, eval=T, results="hide", cache=T}
+# Re-estimation of the HMM-VB model with reduced dimensions
+re.fit = fitHmmvb(red.X,C,red.vbs)
+
+# Final clustering
+final.cls = finalcls(red.dat$X,re.fit,C,5)
+```
+
+
+For this simulated dataset, the clustering result of HMM-VB-VS has high clustering accuracy which is measured by adjusted Rand index (ARI) and Wasserstein distance (WD) as well as perfect variable selection accuracy which is measured by F-score.
+```{r,  echo=T, eval=T, cache=T}
+library(mclust)
+library(OTclust)
+# The clustering and variable selection accuracy.
+ARI = adjustedRandIndex(Y,final.cls)
+print(ARI)
+
+WD = wassDist(Y,final.cls)
+print(WD)
+
+DRR = 1-dim(red.X)[2]/dim(X)[2]
+print(DRR)
+
+chosen.v = unlist(fit$vbs$vb[chosen.vb])
+tp = sum(chosen.v<=100)
+fp = sum(chosen.v>100)
+tn = sum((1:p)[-chosen.v]>100)
+fn = sum((1:p)[-chosen.v]<=100)
+  
+precision = tp/(tp+fp)
+print(precision)
+
+recall = tp/(tp+fn)
+print(recall)
+
+F1 = 2/(1/precision+1/recall)
+print(F1)
+
+```

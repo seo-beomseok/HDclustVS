@@ -1,0 +1,27 @@
+Package: HDclustVS
+Title: Block-wise Variable Selection for Clustering via Latent States of Mixture Models
+Version: 1.0
+Authors@R: c(person("Beomseok", "Seo", email = "bzs32@psu.edu", role = c("aut","cre")),person("Lin", "Lin", email = "llin@psu.edu", role = "aut"),person("Jia", "Li", email = "jiali@psu.edu", role = "aut"))
+Author: Beomseok Seo [aut, cre],
+  Lin Lin [aut],
+  Jia Li [aut]
+Maintainer: Beomseok Seo <bzs32@psu.edu>    
+Description: HDclustVS is an R package for new block-wise variable selection methods for clustering, HMM-VB-VS and GMM-VB-VS, which exploit the latent states of the hidden Markov model on variable blocks or Gaussian mixture model. The variable blocks are formed by early-stop-and-sorted-depth-first-search (ESS-DFS) on a dendrogram created based on the mutual information between any pair of variables. Then, the variable selection is conducted by an independence test between the latent states and semi-clusters which are the smaller clusters that will be further grouped into final clusters. This package will be merged with HDclust in CRAN in the near future.
+Depends: R (>= 3.1.0)
+License: GPL (>= 2)
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 7.1.1
+Suggests: 
+    knitr,
+    rmarkdown,
+    mclust
+VignetteBuilder: knitr
+Imports:
+	HDclust,
+	clusterGeneration,
+	dplyr,
+	entropy,
+	ggplot2,
+	mclust,
+	mvtnorm
